@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="100%" stop-color="#e11d48"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <circle cx="128" cy="128" r="96" fill="none" stroke="url(#accent)" stroke-width="6" stroke-opacity="0.35"/>
+  <!-- Fedora hat silhouette -->
+  <path d="M40 132 C76 118, 180 118, 216 132 C186 144, 70 144, 40 132 Z" fill="url(#accent)"/>
+  <path d="M74 124 L92 74 C98 62, 114 68, 128 74 C142 68, 158 62, 164 74 L182 124 Z" fill="#f8fafc"/>
+  <path d="M76 116 Q128 126 180 116 L182 124 Q128 134 74 124 Z" fill="url(#accent)"/>
+  <!-- Domino mask eyes -->
+  <path d="M76 156 C92 144, 116 148, 128 160 C140 148, 164 144, 180 156 C188 168, 176 186, 154 184 C140 182, 134 174, 128 170 C122 174, 116 182, 102 184 C80 186, 68 168, 76 156 Z" fill="#1e293b" stroke="#f43f5e" stroke-width="4"/>
+  <ellipse cx="102" cy="166" rx="12" ry="7" fill="#f43f5e"/>
+  <ellipse cx="154" cy="166" rx="12" ry="7" fill="#f43f5e"/>
+</svg>

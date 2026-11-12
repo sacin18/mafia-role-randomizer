@@ -1,0 +1,4 @@
+few improvements are required:
+1. tie the device to their ip address for a game code -- currently the same device is able to create multiple players for a game code. So we need to store the device's ip address for each game code and not allow more than one player from the same ip address to join the same game code.
+2. once the game is started the player's screen hides the role -- instead allow user to click and hold to view the role and hide again once click/hold is removed.
+3. keep the host device awake till roles are assigned - currently if the host device sleeps than the other devices are not able to see the players list and roles are also not assigned. 

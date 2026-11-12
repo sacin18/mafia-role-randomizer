@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0b0f19" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Mafia Role Randomizer &amp; Game Hub</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand" id="brandHomeBtn" title="Return to main menu">
+        <img src="/icon.svg" alt="Mafia Icon" class="brand-icon" />
+        <div>
+          <div class="brand-title">MAFIA HUB</div>
+          <div class="brand-subtitle">Offline Hotspot Role Randomizer</div>
+        </div>
+      </div>
+      <div class="conn-badge" id="connBadge">
+        <span class="conn-dot"></span>
+        <span id="connText">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Global Alert Banner -->
+    <div id="alertBanner" class="banner banner-error hidden" role="alert">
+      <span id="alertText"></span>
+      <button type="button" class="btn btn-sm btn-secondary" id="alertCloseBtn">Dismiss</button>
+    </div>
+
+    <!-- Top Mode Navigation -->
+    <nav class="mode-tabs" id="mainNavTabs">
+      <button type="button" class="mode-tab active" data-tab="join">Join Game</button>
+      <button type="button" class="mode-tab" data-tab="create">Create (God)</button>
+      <button type="button" class="mode-tab" data-tab="god-login">God Panel</button>
+    </nav>
+
+    <!-- ==================== VIEW 1: PLAYER JOIN ==================== -->
+    <section id="viewJoin" class="view-section">
+      <div class="card">
+        <div class="card-title">
+          <span>Enter Game Code</span>
+          <span class="badge badge-lobby" id="runningGamesCountBadge">0 Running</span>
+        </div>
+        <p class="card-desc">
+          Type a game code with auto-complete or pick a running game from the dropdown.
+        </p>
+
+        <form id="playerJoinForm" autocomplete="off">
+          <!-- Game Code Auto-Type + Dropdown -->
+          <div class="form-group">
+            <label class="form-label" for="joinGameCodeInput">
+              <span>Game Code</span>
+              <span class="label-hint" id="cachedCodeHint"></span>
+            </label>
+            <div class="combo-wrapper" id="gameCodeCombo">
+              <div class="combo-input-wrap">
+                <input
+                  type="text"
+                  id="joinGameCodeInput"
+                  class="code-input"
+                  placeholder="e.g. clever_turing"
+                  required
+                />
+                <button
+                  type="button"
+                  class="combo-toggle-btn"
+                  id="comboToggleBtn"
+                  title="Show running games"
+                  aria-label="Toggle running games dropdown"
+                >
+                  &#9662;
+                </button>
+              </div>
+              <div class="combo-dropdown hidden" id="gameCodeDropdown"></div>
+            </div>
+          </div>
+
+          <!-- Player Name -->
+          <div class="form-group">
+            <label class="form-label" for="joinPlayerNameInput">
+              <span>Your Player Name</span>
+              <span class="label-hint" id="deviceIpHint">1 player per device IP</span>
+            </label>
+            <input
+              type="text"
+              id="joinPlayerNameInput"
+              placeholder="Enter your name (e.g. Alex)"
+              maxlength="32"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="joinSubmitBtn">
+            Join Game / View Role
+          </button>
+        </form>
+      </div>
+
+      <!-- Quick Running Games List -->
+      <div class="card" id="runningGamesCard">
+        <div class="card-title">
+          <span>Currently Running Games</span>
+          <button type="button" class="btn btn-sm btn-secondary" id="refreshGamesBtn">Refresh</button>
+        </div>
+        <p class="card-desc">Tap any active game below to select its game-code automatically.</p>
+        <div id="runningGamesQuickList" class="player-list"></div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 2: CREATE GAME (GAME-GOD) ==================== -->
+    <section id="viewCreate" class="view-section hidden">
+      <div class="card">
+        <div class="card-title">
+          <span>Create New Game (Game-God)</span>
+          <span class="badge badge-reveal">Host</span>
+        </div>
+        <p class="card-desc">
+          Only Game-God can create a game code. Set your 4–8 digit passcode, role counts or percentages, and optional player names.
+        </p>
+
+        <div class="wakelock-bar" id="createWakeLockBar">
+          <span>&#9728; Host Awake Lock: Active until roles are assigned</span>
+          <span class="badge badge-reveal" id="createWakeLockState">AWAKE</span>
+        </div>
+
+        <form id="createGameForm" autocomplete="off">
+          <!-- Docker-style random Game Code -->
+          <div class="form-group">
+            <label class="form-label" for="createGameCodeInput">
+              <span>Generated Game Code (Docker-style)</span>
+              <span class="label-hint">Auto-generated words</span>
+            </label>
+            <div class="input-row">
+              <input
+                type="text"
+                id="createGameCodeInput"
+                class="code-input"
+                placeholder="clever_turing"
+                required
+              />
+              <button type="button" class="btn btn-secondary" id="regenCodeBtn" title="Generate new random words">
+                &#x21bb; New Code
+              </button>
+            </div>
+          </div>
+
+          <!-- 4-8 Digit Passcode -->
+          <div class="form-group">
+            <label class="form-label" for="createPasscodeInput">
+              <span>Game-God Passcode (4–8 Digits)</span>
+              <span class="label-hint">Required to manage &amp; view all roles</span>
+            </label>
+            <input
+              type="password"
+              inputmode="numeric"
+              pattern="\d{4,8}"
+              minlength="4"
+              maxlength="8"
+              id="createPasscodeInput"
+              placeholder="e.g. 1234"
+              required
+            />
+          </div>
+
+          <!-- Allow Players to Join Switch -->
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">Allow Players to Self-Join Lobby</div>
+              <div class="switch-sub">Players can enter the game code on their phones to add themselves</div>
+            </div>
+            <input type="checkbox" class="toggle" id="createAllowJoinToggle" checked />
+          </div>
+
+          <!-- Role Allocation Mode: Fixed Counts vs Percentage -->
+          <div class="form-group">
+            <label class="form-label">
+              <span>Role Assignment Method</span>
+              <span class="label-hint" id="totalPlayersCalcBadge">Total Players: 6</span>
+            </label>
+            <div class="seg-control">
+              <button type="button" class="seg-btn active" id="modeCountsBtn" data-mode="counts">
+                Fixed Role Counts
+              </button>
+              <button type="button" class="seg-btn" id="modePctBtn" data-mode="percentages">
+                By Percentage (%)
+              </button>
+            </div>
+
+            <!-- Fixed Counts Inputs -->
+            <div id="countsConfigBox" class="role-grid">
+              <div class="role-box mafia">
+                <div class="role-box-label">
+                  <span>Mafia</span>
+                  <span style="color: var(--role-mafia)">&#9679;</span>
+                </div>
+                <input type="number" id="countMafia" min="1" max="50" value="1" />
+              </div>
+              <div class="role-box detective">
+                <div class="role-box-label">
+                  <span>Detectives</span>
+                  <span style="color: var(--role-detective)">&#9679;</span>
+                </div>
+                <input type="number" id="countDetective" min="0" max="50" value="1" />
+              </div>
+              <div class="role-box doctor">
+                <div class="role-box-label">
+                  <span>Doctors</span>
+                  <span style="color: var(--role-doctor)">&#9679;</span>
+                </div>
+                <input type="number" id="countDoctor" min="0" max="50" value="1" />
+              </div>
+              <div class="role-box villager">
+                <div class="role-box-label">
+                  <span>Villagers</span>
+                  <span style="color: var(--role-villager)">&#9679;</span>
+                </div>
+                <input type="number" id="countVillager" min="0" max="100" value="3" />
+              </div>
+            </div>
+
+            <!-- Percentage Inputs -->
+            <div id="pctConfigBox" class="role-grid hidden">
+              <div class="role-box mafia">
+                <div class="role-box-label">
+                  <span>Mafia %</span>
+                  <span style="color: var(--role-mafia)">%</span>
+                </div>
+                <input type="number" id="pctMafia" min="5" max="90" value="25" />
+              </div>
+              <div class="role-box detective">
+                <div class="role-box-label">
+                  <span>Detective %</span>
+                  <span style="color: var(--role-detective)">%</span>
+                </div>
+                <input type="number" id="pctDetective" min="0" max="90" value="15" />
+              </div>
+              <div class="role-box doctor">
+                <div class="role-box-label">
+                  <span>Doctor %</span>
+                  <span style="color: var(--role-doctor)">%</span>
+                </div>
+                <input type="number" id="pctDoctor" min="0" max="90" value="15" />
+              </div>
+              <div class="role-box villager">
+                <div class="role-box-label">
+                  <span>Villager %</span>
+                  <span style="color: var(--role-villager)">%</span>
+                </div>
+                <input type="number" id="pctVillager" min="0" max="100" value="45" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Pre-filled Player Names (Optional or from Previous Run) -->
+          <div class="form-group">
+            <div class="form-label">
+              <span>Player Names (Optional if players self-join)</span>
+              <button type="button" class="btn btn-sm btn-secondary" id="autofillPrevPlayersBtn">
+                Auto-Fill Previous Players
+              </button>
+            </div>
+            <textarea
+              id="createPlayerNamesInput"
+              rows="3"
+              placeholder="Enter player names separated by commas or new lines (e.g. Alice, Bob, Charlie)..."
+            ></textarea>
+            <div class="label-hint" style="margin-top: 4px" id="createNamesCountHint">
+              0 names entered. Players can also join from their own phones using the game code.
+            </div>
+          </div>
+
+          <!-- Initial Game Rules -->
+          <div class="form-group">
+            <label class="form-label" for="createKillSaveMode">
+              <span>Kill / Save Announcement Rule</span>
+            </label>
+            <select id="createKillSaveMode">
+              <option value="announce_save">Announce when Doctor saves Mafia's target</option>
+              <option value="standard">Quiet save (only announce that nobody died)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            Create Game &amp; Open God Dashboard
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 3: GOD LOGIN / MANAGE ==================== -->
+    <section id="viewGodLogin" class="view-section hidden">
+      <div class="card">
+        <div class="card-title">
+          <span>Game-God Access</span>
+          <span class="badge badge-started">Protected</span>
+        </div>
+        <p class="card-desc">
+          Enter the game-code and your 4–8 digit passcode to view all player roles, randomize roles, or modify game rules.
+        </p>
+
+        <form id="godLoginForm" autocomplete="off">
+          <div class="form-group">
+            <label class="form-label" for="godLoginCodeInput">Game Code</label>
+            <input
+              type="text"
+              id="godLoginCodeInput"
+              class="code-input"
+              placeholder="e.g. clever_turing"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="godLoginPasscodeInput">Passcode (4–8 Digits)</label>
+            <input
+              type="password"
+              inputmode="numeric"
+              pattern="\d{4,8}"
+              id="godLoginPasscodeInput"
+              placeholder="Enter 4-8 digit passcode"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">
+            Unlock Game-God Dashboard
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 4: ACTIVE PLAYER DASHBOARD ==================== -->
+    <section id="viewPlayerRoom" class="view-section hidden">
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <span class="code-input" id="playerRoomCode"></span>
+            <span class="badge badge-lobby" id="playerRoomStatusBadge" style="margin-left: 6px;">LOBBY</span>
+          </div>
+          <div class="player-actions">
+            <button type="button" class="btn btn-sm btn-secondary" id="playerRefreshBtn">
+              &#x21bb; Refresh
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" id="playerLeaveBtn">
+              Switch Game
+            </button>
+          </div>
+        </div>
+        <p class="card-desc">
+          Playing as <strong id="playerRoomMyName" style="color: #fff;"></strong> &bull;
+          Phase: <strong id="playerRoomPhase" style="color: #fda4af;">Lobby</strong>
+        </p>
+
+        <!-- Dynamic Announcement Banner -->
+        <div class="banner banner-info" id="playerAnnouncementBox">
+          <span id="playerAnnouncementText">Waiting for Game-God...</span>
+        </div>
+
+        <!-- Role Display Area (strictly follows pre-start vs started rule) -->
+        <div id="playerRoleContainer"></div>
+      </div>
+
+      <!-- Public Town Roster (No secret roles shown to players!) -->
+      <div class="card">
+        <div class="card-title">
+          <span>Players in Game</span>
+          <span class="badge badge-lobby" id="playerRoomRosterCount">0 Players</span>
+        </div>
+        <p class="card-desc">Only your own role is visible to you before the game starts. Other players' roles are hidden.</p>
+        <div id="playerRoomRosterList" class="player-list"></div>
+      </div>
+    </section>
+
+    <!-- ==================== VIEW 5: GAME-GOD DASHBOARD ==================== -->
+    <section id="viewGodDashboard" class="view-section hidden">
+      <!-- Hotspot Info Card -->
+      <div class="hotspot-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <strong>Hotspot Server Connection</strong>
+          <span class="badge badge-reveal" id="godRoundBadge">Round 1</span>
+        </div>
+        <div>
+          Players on your Wi-Fi hotspot can open:
+          <span class="hotspot-url" id="godHotspotUrlDisplay">http://localhost:8080</span>
+        </div>
+        <div style="margin-top: 4px; color: var(--text-muted);">
+          Game Code: <strong class="code-input" style="color: #fff;" id="godBannerCode"></strong>
+        </div>
+      </div>
+
+      <!-- Host Wake Lock Status Bar -->
+      <div class="wakelock-bar" id="godWakeLockBar">
+        <span id="godWakeLockText">&#9728; Host Device Kept Awake (Until Roles Assigned)</span>
+        <button type="button" class="btn btn-sm btn-secondary" id="godToggleWakeLockBtn">
+          Keep Awake: Auto
+        </button>
+      </div>
+
+      <!-- Primary Phase & Randomization Controls -->
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <span>God Control Center</span>
+            <span class="badge badge-lobby" id="godStatusBadge" style="margin-left: 6px;">LOBBY</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-secondary" id="godExitBtn">Exit God View</button>
+        </div>
+        <p class="card-desc" id="godPhaseSubtitle">
+          Confirm players and role distribution, then click "Begin Randomization".
+        </p>
+
+        <!-- Action Buttons for Lifecycle -->
+        <div style="display: grid; gap: 10px; margin-bottom: 14px;">
+          <button type="button" class="btn btn-primary" id="godBeginRandomizeBtn">
+            &#x1F3B2; Begin Randomization (Assign Roles)
+          </button>
+          <button type="button" class="btn btn-success hidden" id="godStartGameBtn">
+            &#x1F512; Start Game (Conceal Roles — Hold to View)
+          </button>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="godSecondaryActions">
+            <button type="button" class="btn btn-sm btn-secondary hidden" id="godUnlockRolesBtn">
+              Unlock Role View (Pre-Game)
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" id="godNewRoundBtn">
+              &#x21bb; New Round (Keep Players)
+            </button>
+          </div>
+        </div>
+
+        <!-- Role Distribution Summary & Quick Adjust -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px; margin-top: 10px;">
+          <div class="form-label">
+            <span>Role Setup (<span id="godAllocModeLabel">Fixed Counts</span>)</span>
+            <button type="button" class="btn btn-sm btn-secondary" id="godToggleAllocModeBtn">
+              Switch to % Mode
+            </button>
+          </div>
+
+          <div id="godCountsRow" class="role-grid">
+            <div class="role-box mafia">
+              <div class="role-box-label"><span>Mafia</span></div>
+              <input type="number" id="godCountMafia" min="0" max="50" value="1" />
+            </div>
+            <div class="role-box detective">
+              <div class="role-box-label"><span>Detective</span></div>
+              <input type="number" id="godCountDetective" min="0" max="50" value="1" />
+            </div>
+            <div class="role-box doctor">
+              <div class="role-box-label"><span>Doctor</span></div>
+              <input type="number" id="godCountDoctor" min="0" max="50" value="1" />
+            </div>
+            <div class="role-box villager">
+              <div class="role-box-label"><span>Villager</span></div>
+              <input type="number" id="godCountVillager" min="0" max="100" value="3" />
+            </div>
+          </div>
+
+          <div id="godPctRow" class="role-grid hidden">
+            <div class="role-box mafia">
+              <div class="role-box-label"><span>Mafia %</span></div>
+              <input type="number" id="godPctMafia" min="0" max="100" value="25" />
+            </div>
+            <div class="role-box detective">
+              <div class="role-box-label"><span>Detective %</span></div>
+              <input type="number" id="godPctDetective" min="0" max="100" value="15" />
+            </div>
+            <div class="role-box doctor">
+              <div class="role-box-label"><span>Doctor %</span></div>
+              <input type="number" id="godPctDoctor" min="0" max="100" value="15" />
+            </div>
+            <div class="role-box villager">
+              <div class="role-box-label"><span>Villager %</span></div>
+              <input type="number" id="godPctVillager" min="0" max="100" value="45" />
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-sm btn-secondary" id="godSaveSetupBtn" style="width: 100%;">
+            Save Role Distribution
+          </button>
+        </div>
+      </div>
+
+      <!-- God's All-Seeing Player & Role List -->
+      <div class="card">
+        <div class="card-title">
+          <span>All Players &amp; Secret Roles (God Only)</span>
+          <span class="badge badge-reveal" id="godPlayerCountBadge">0 Players</span>
+        </div>
+        <p class="card-desc">
+          Only you (Game-God) can see everyone's assigned role. Add players below or let them join on their phones.
+        </p>
+
+        <!-- Add Player Input -->
+        <div class="input-row" style="margin-bottom: 14px;">
+          <input
+            type="text"
+            id="godAddPlayerInput"
+            placeholder="Add player name manually..."
+            maxlength="32"
+          />
+          <button type="button" class="btn btn-secondary" id="godAddPlayerBtn">+ Add</button>
+        </div>
+
+        <div id="godPlayersList" class="player-list"></div>
+      </div>
+
+      <!-- Night Kill / Save / Investigate & Rules Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>Kill / Save Mode &amp; Game Rules</span>
+          <span class="badge badge-started" id="godCurrentPhaseBadge">Lobby</span>
+        </div>
+        <p class="card-desc">
+          Record Night actions (Mafia Kill, Doctor Save, Detective Check) and modify game rules.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="godKillTargetSelect">Mafia Kill Target</label>
+          <select id="godKillTargetSelect">
+            <option value="">-- No Kill / Select Target --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="godSaveTargetSelect">Doctor Save Target</label>
+          <select id="godSaveTargetSelect">
+            <option value="">-- No Save / Select Target --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="godInvestigateTargetSelect">Detective Investigate Target</label>
+          <select id="godInvestigateTargetSelect">
+            <option value="">-- Optional: Select Investigated Player --</option>
+          </select>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="godResolveNightBtn" style="margin-bottom: 16px;">
+          Resolve Night Actions (Kill / Save)
+        </button>
+
+        <!-- Modifiable Game Rules -->
+        <div style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+          <div class="form-label"><span>Game Rules (God Modifiable)</span></div>
+
+          <div class="form-group">
+            <label class="form-label" for="godRuleKillSaveSelect">Kill / Save Announcement Mode</label>
+            <select id="godRuleKillSaveSelect">
+              <option value="announce_save">Announce when Doctor saves Mafia's target</option>
+              <option value="standard">Silent save (only announce nobody died)</option>
+            </select>
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">Allow Players to Join Lobby</div>
+              <div class="switch-sub">Let new devices join this game code</div>
+            </div>
+            <input type="checkbox" class="toggle" id="godRuleAllowJoinToggle" checked />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">Doctor Can Self-Save</div>
+              <div class="switch-sub">Allow Doctor to protect themselves at night</div>
+            </div>
+            <input type="checkbox" class="toggle" id="godRuleSelfSaveToggle" checked />
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">Reveal Role When Eliminated</div>
+              <div class="switch-sub">Show eliminated player's role to all players</div>
+            </div>
+            <input type="checkbox" class="toggle" id="godRuleRevealDeathToggle" />
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 12px;">
+            <button type="button" class="btn btn-sm btn-warning" id="godEndMafiaWinBtn" style="flex: 1;">
+              Declare Mafia Win
+            </button>
+            <button type="button" class="btn btn-sm btn-success" id="godEndVillageWinBtn" style="flex: 1;">
+              Declare Village Win
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Event Log -->
+      <div class="card">
+        <div class="card-title"><span>Game Log (God Only)</span></div>
+        <div id="godHistoryLog" class="history-log"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

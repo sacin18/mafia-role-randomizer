@@ -1,0 +1,76 @@
+{
+  "games": {
+    "amazing_tu": {
+      "gameCode": "amazing_tu",
+      "passcode": "1234",
+      "status": "STARTED",
+      "roundNumber": 2,
+      "phase": "Night 1",
+      "allowJoin": false,
+      "allocationMode": "percentages",
+      "roleCounts": {
+        "mafia": 1,
+        "detective": 0,
+        "doctor": 0,
+        "villager": 1
+      },
+      "rolePercentages": {
+        "mafia": 25.0,
+        "detective": 15.0,
+        "doctor": 15.0,
+        "villager": 45.0
+      },
+      "expectedTotal": 2,
+      "rules": {
+        "killSaveMode": "announce_save",
+        "doctorSelfSave": true,
+        "revealRoleOnDeath": false,
+        "revealRolesOnEnd": true
+      },
+      "players": [
+        {
+          "name": "Alex",
+          "role": "Villager",
+          "alive": true,
+          "claimed": true,
+          "token": "dev_i2uvrj7yx_mwdj751q",
+          "savedLastNight": false,
+          "killedLastNight": false
+        },
+        {
+          "name": "Vu",
+          "role": "Mafia",
+          "alive": true,
+          "claimed": true,
+          "token": "dev_7xiz7epy8_mwdja65b",
+          "savedLastNight": false,
+          "killedLastNight": false
+        }
+      ],
+      "nightActions": {
+        "killTarget": "",
+        "saveTarget": "",
+        "investigateTarget": ""
+      },
+      "announcement": "Game has started! Role display is now locked on player devices.",
+      "history": [
+        "Game 'amazing_tu' (Round 1) created by Game-God.",
+        "Player 'Alex' joined the game.",
+        "Player 'Va' joined the game.",
+        "Player 'Vu' joined the game.",
+        "Roles randomized for 2 players (1 Mafia, 0 Detective, 0 Doctor, 1 Villager).",
+        "Game officially started (Night 1). Player roles are now hidden on refresh.",
+        "Reset to Lobby for Round 2 with 2 players.",
+        "Roles randomized for 2 players (1 Mafia, 0 Detective, 0 Doctor, 1 Villager).",
+        "Game officially started (Night 1). Player roles are now hidden on refresh."
+      ],
+      "createdAt": 1794486716178
+    }
+  },
+  "previous_players_by_code": {
+    "amazing_tu": [
+      "Alex",
+      "Vu"
+    ]
+  }
+}
