@@ -195,6 +195,18 @@ final class MafiaHotspotServer {
         }
     }
 
+    private func resolveGameCode(_ raw: String) -> String {
+        let clean = raw.trimmingCharacters(in: .whitespaces).lowercased()
+        if games[clean] != nil { return clean }
+        let norm = clean.replacingOccurrences(of: "-", with: "_")
+        for key in games.keys {
+            if key.lowercased().replacingOccurrences(of: "-", with: "_") == norm {
+                return key
+            }
+        }
+        return clean
+    }
+
     private func handleClient(fd: Int32, peerIp: String) {
         var one: Int32 = 1
         setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
@@ -508,7 +520,7 @@ final class MafiaHotspotServer {
             broadcastUpdate(gameCode: code)
 
         case "GOD_AUTH":
-            let code = (msg["gameCode"] as? String ?? "").trimmingCharacters(in: .whitespaces).lowercased()
+            let code = resolveGameCode(msg["gameCode"] as? String ?? "")
             let passcode = (msg["passcode"] as? String ?? "").trimmingCharacters(in: .whitespaces)
             guard let g = games[code], (g["passcode"] as? String) == passcode else {
                 ws.sendError("Invalid game code or Game-God passcode.")
@@ -519,7 +531,7 @@ final class MafiaHotspotServer {
             ws.sendJson(["type": "GOD_STATE", "game": g])
 
         case "JOIN_PLAYER":
-            let code = (msg["gameCode"] as? String ?? "").trimmingCharacters(in: .whitespaces).lowercased()
+            let code = resolveGameCode(msg["gameCode"] as? String ?? "")
             let playerName = (msg["playerName"] as? String ?? "").trimmingCharacters(in: .whitespaces)
             let token = (msg["playerToken"] as? String ?? "").trimmingCharacters(in: .whitespaces)
             guard var g = games[code] else {

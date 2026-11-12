@@ -35,6 +35,15 @@
       <button type="button" class="btn btn-sm btn-secondary" id="alertCloseBtn">Dismiss</button>
     </div>
 
+    <!-- Persistent Browser URL Bar for Other Players -->
+    <div class="browser-url-bar" id="browserUrlBanner">
+      <div class="browser-url-info">
+        <span class="browser-url-label">Other players open in browser:</span>
+        <span class="hotspot-url" id="browserUrlText">http://192.168.43.1:8080</span>
+      </div>
+      <button type="button" class="btn btn-sm btn-secondary" id="copyBrowserUrlBtn">Copy URL</button>
+    </div>
+
     <!-- Top Mode Navigation -->
     <nav class="mode-tabs" id="mainNavTabs">
       <button type="button" class="mode-tab active" data-tab="join">Join Game</button>
@@ -149,6 +158,17 @@
               <button type="button" class="btn btn-secondary" id="regenCodeBtn" title="Generate new random words">
                 &#x21bb; New Code
               </button>
+            </div>
+            <!-- Shareable Direct Join URL Preview -->
+            <div class="invite-url-box" id="createInviteUrlBox">
+              <div class="invite-url-meta">
+                <span class="invite-url-label">Shareable Join URL (auto-fills game code for players):</span>
+                <span class="hotspot-url" id="createInviteUrlDisplay">http://localhost:8080/?gamecode=clever_turing</span>
+              </div>
+              <div class="invite-url-actions">
+                <button type="button" class="btn btn-sm btn-secondary" id="copyCreateInviteUrlBtn">Copy Link</button>
+                <button type="button" class="btn btn-sm btn-secondary" id="shareCreateInviteUrlBtn">Share</button>
+              </div>
             </div>
           </div>
 
@@ -382,15 +402,25 @@
       <!-- Hotspot Info Card -->
       <div class="hotspot-box">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <strong>Hotspot Server Connection</strong>
+          <strong>Hotspot Server &amp; Player Invite Link</strong>
           <span class="badge badge-reveal" id="godRoundBadge">Round 1</span>
         </div>
         <div>
-          Players on your Wi-Fi hotspot can open:
+          Browser URL for other players:
           <span class="hotspot-url" id="godHotspotUrlDisplay">http://localhost:8080</span>
         </div>
         <div style="margin-top: 4px; color: var(--text-muted);">
           Game Code: <strong class="code-input" style="color: #fff;" id="godBannerCode"></strong>
+        </div>
+        <div class="invite-url-box" style="margin-top: 10px;">
+          <div class="invite-url-meta">
+            <span class="invite-url-label">Direct Join URL (passes game code automatically):</span>
+            <span class="hotspot-url" id="godJoinUrlDisplay">http://localhost:8080/?gamecode=clever_turing</span>
+          </div>
+          <div class="invite-url-actions">
+            <button type="button" class="btn btn-sm btn-secondary" id="copyGodJoinUrlBtn">Copy Invite URL</button>
+            <button type="button" class="btn btn-sm btn-secondary" id="shareGodJoinUrlBtn">Share Invite</button>
+          </div>
         </div>
       </div>
 

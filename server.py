@@ -609,12 +609,24 @@ async def handle_ws_message(ws: WebSocketConnection, msg: dict, port: int):
         ws.subscribed_game = raw_code
         ws.god_passcode = passcode
         god_view, _ = STORE.get_god_game_view(raw_code, passcode)
-        await ws.send_json({"type": "GAME_CREATED", "game": god_view})
+        ips = get_local_ips()
+        primary_ip = ips[0] if ips else "localhost"
+        join_url = f"http://{primary_ip}:{port}/?gamecode={raw_code}"
+        if god_view is not None:
+            god_view["joinUrl"] = join_url
+        print(f"  [Game Created] '{raw_code}' -> Shareable Join URL: {join_url}")
+        await ws.send_json({"type": "GAME_CREATED", "game": god_view, "joinUrl": join_url})
         await broadcast_game_update(raw_code)
         return
 
     if action == "GOD_AUTH":
         game_code = (msg.get("gameCode") or "").strip().lower()
+        if game_code not in STORE.games:
+            norm = re.sub(r"[-_]+", "_", game_code)
+            for k in STORE.games:
+                if re.sub(r"[-_]+", "_", k.lower()) == norm:
+                    game_code = k
+                    break
         passcode = str(msg.get("passcode") or "").strip()
         god_view, err = STORE.get_god_game_view(game_code, passcode)
         if err:
@@ -627,6 +639,12 @@ async def handle_ws_message(ws: WebSocketConnection, msg: dict, port: int):
 
     if action == "JOIN_PLAYER":
         game_code = (msg.get("gameCode") or "").strip().lower()
+        if game_code not in STORE.games:
+            norm = re.sub(r"[-_]+", "_", game_code)
+            for k in STORE.games:
+                if re.sub(r"[-_]+", "_", k.lower()) == norm:
+                    game_code = k
+                    break
         player_name = (msg.get("playerName") or "").strip()
         player_token = (msg.get("playerToken") or "").strip()
         is_reconnect = bool(msg.get("isReconnect", False))

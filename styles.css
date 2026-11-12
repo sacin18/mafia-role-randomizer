@@ -107,6 +107,64 @@ body {
   box-shadow: 0 0 8px #f59e0b;
 }
 
+/* Browser URL Banner for Other Players */
+.browser-url-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.browser-url-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.browser-url-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.invite-url-box {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px dashed rgba(56, 189, 248, 0.45);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.invite-url-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.invite-url-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.invite-url-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 /* Navigation Tabs */
 .mode-tabs {
   display: grid;
