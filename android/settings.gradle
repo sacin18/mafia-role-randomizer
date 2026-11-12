@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "MafiaHub"
-include(":app")
+include ':app'

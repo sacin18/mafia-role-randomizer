@@ -29,15 +29,14 @@ jobs:
 
       - name: Build Release & Debug APK
         working-directory: ./android
-        run: gradle assembleRelease assembleDebug
+        run: gradle assembleRelease assembleDebug --stacktrace
 
       - name: Upload Shareable Android APK
         uses: actions/upload-artifact@v4
         with:
           name: MafiaHub-Android-APK
           path: |
-            android/app/build/outputs/apk/release/app-release.apk
-            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/**/*.apk
 
   build-ios:
     name: Build Native iOS App (Simulator / Unsigned IPA)
