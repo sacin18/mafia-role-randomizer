@@ -1,0 +1,2 @@
+1. the server should show url for other players to visit on their browser.
+2. the game creator should be given a url so that he/she can share it with other players to join the game. This url should pass the game code so that the player need not search for it separately. say for example http://localhost:5000/?gamecode=voracious-panda

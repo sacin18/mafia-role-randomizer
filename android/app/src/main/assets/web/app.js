@@ -276,6 +276,9 @@
     alertCloseBtn: document.getElementById('alertCloseBtn'),
     brandHomeBtn: document.getElementById('brandHomeBtn'),
     mainNavTabs: document.getElementById('mainNavTabs'),
+    browserUrlBanner: document.getElementById('browserUrlBanner'),
+    browserUrlText: document.getElementById('browserUrlText'),
+    copyBrowserUrlBtn: document.getElementById('copyBrowserUrlBtn'),
 
     // Views
     viewJoin: document.getElementById('viewJoin'),
@@ -302,6 +305,9 @@
     createGameForm: document.getElementById('createGameForm'),
     createGameCodeInput: document.getElementById('createGameCodeInput'),
     regenCodeBtn: document.getElementById('regenCodeBtn'),
+    createInviteUrlDisplay: document.getElementById('createInviteUrlDisplay'),
+    copyCreateInviteUrlBtn: document.getElementById('copyCreateInviteUrlBtn'),
+    shareCreateInviteUrlBtn: document.getElementById('shareCreateInviteUrlBtn'),
     createPasscodeInput: document.getElementById('createPasscodeInput'),
     createAllowJoinToggle: document.getElementById('createAllowJoinToggle'),
     totalPlayersCalcBadge: document.getElementById('totalPlayersCalcBadge'),
@@ -343,6 +349,9 @@
     godRoundBadge: document.getElementById('godRoundBadge'),
     godHotspotUrlDisplay: document.getElementById('godHotspotUrlDisplay'),
     godBannerCode: document.getElementById('godBannerCode'),
+    godJoinUrlDisplay: document.getElementById('godJoinUrlDisplay'),
+    copyGodJoinUrlBtn: document.getElementById('copyGodJoinUrlBtn'),
+    shareGodJoinUrlBtn: document.getElementById('shareGodJoinUrlBtn'),
     godWakeLockBar: document.getElementById('godWakeLockBar'),
     godWakeLockText: document.getElementById('godWakeLockText'),
     godToggleWakeLockBtn: document.getElementById('godToggleWakeLockBtn'),
@@ -704,7 +713,12 @@
     }
 
     if (action === 'JOIN_PLAYER') {
-      const code = (msg.gameCode || '').trim().toLowerCase();
+      let code = (msg.gameCode || '').trim().toLowerCase();
+      if (!db[code]) {
+        const norm = code.replace(/[-_]+/g, '_');
+        const matchedKey = Object.keys(db).find((k) => k.toLowerCase().replace(/[-_]+/g, '_') === norm);
+        if (matchedKey) code = matchedKey;
+      }
       const playerName = (msg.playerName || '').trim();
       const token = msg.playerToken || getOrCreateDeviceToken();
       const clientIp = state.serverInfo?.clientIp || '127.0.0.1';
@@ -1032,6 +1046,7 @@
         savePrevPlayersMap(state.previousPlayersByCode);
         if (data.serverInfo) {
           state.serverInfo = data.serverInfo;
+          updateBrowserUrlBanner();
         }
         if (data.suggestedCode && !el.createGameCodeInput.value) {
           el.createGameCodeInput.value = data.suggestedCode;
@@ -1057,6 +1072,7 @@
 
       case 'GENERATED_CODE': {
         el.createGameCodeInput.value = data.gameCode;
+        updateCreateInvitePreview();
         checkPreviousPlayersForCode(data.gameCode);
         break;
       }
@@ -1072,7 +1088,8 @@
         });
         renderGodDashboard(g);
         switchView('god-dashboard');
-        showAlert(`Game '${g.gameCode}' created! Share this code with players.`, 'success');
+        const inviteUrl = buildGameInviteUrl(g.gameCode);
+        showAlert(`Game '${g.gameCode}' created! Share link: ${inviteUrl}`, 'success');
         break;
       }
 
@@ -1117,15 +1134,58 @@
     }
   }
 
-  // ==================== CACHING & SESSION RESTORE ====================
+  // ==================== CACHING, URL GAMECODE & SESSION RESTORE ====================
+  function getGameCodeFromUrl() {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      for (const [k, v] of searchParams.entries()) {
+        const keyLow = k.trim().toLowerCase();
+        if (
+          (keyLow === 'gamecode' || keyLow === 'game_code' || keyLow === 'code' || keyLow === 'game') &&
+          v &&
+          v.trim()
+        ) {
+          return v.trim().toLowerCase();
+        }
+      }
+      if (window.location.hash && window.location.hash.includes('?')) {
+        const hashQuery = window.location.hash.slice(window.location.hash.indexOf('?'));
+        const hashParams = new URLSearchParams(hashQuery);
+        for (const [k, v] of hashParams.entries()) {
+          const keyLow = k.trim().toLowerCase();
+          if (
+            (keyLow === 'gamecode' || keyLow === 'game_code' || keyLow === 'code' || keyLow === 'game') &&
+            v &&
+            v.trim()
+          ) {
+            return v.trim().toLowerCase();
+          }
+        }
+      }
+    } catch {
+      // ignore URL parsing errors
+    }
+    return '';
+  }
+
+  function resolveMatchingGameCode(rawCode) {
+    const clean = (rawCode || '').trim().toLowerCase();
+    if (!clean) return '';
+    const exact = state.runningGames.find((g) => g.gameCode.toLowerCase() === clean);
+    if (exact) return exact.gameCode;
+    const norm = clean.replace(/[-_]+/g, '_');
+    const fuzzy = state.runningGames.find((g) => g.gameCode.toLowerCase().replace(/[-_]+/g, '_') === norm);
+    return fuzzy ? fuzzy.gameCode : clean;
+  }
+
   function cacheGameCode(code) {
     if (!code) return;
     localStorage.setItem(STORAGE_KEYS.LAST_GAME_CODE, code.trim().toLowerCase());
   }
 
   function updateBoundPlayerHint(code) {
-    const clean = (code || '').trim().toLowerCase();
-    const g = state.runningGames.find((x) => x.gameCode.toLowerCase() === clean);
+    const clean = resolveMatchingGameCode(code);
+    const g = state.runningGames.find((x) => x.gameCode.toLowerCase() === clean.toLowerCase());
     const ip = state.serverInfo?.clientIp || '127.0.0.1';
     if (g && g.myBoundPlayer) {
       el.joinPlayerNameInput.value = g.myBoundPlayer;
@@ -1138,6 +1198,7 @@
   }
 
   function applyDefaultCachedGameCode() {
+    const urlCode = getGameCodeFromUrl();
     const cachedCode = localStorage.getItem(STORAGE_KEYS.LAST_GAME_CODE);
     const cachedName = localStorage.getItem(STORAGE_KEYS.LAST_PLAYER_NAME);
 
@@ -1145,14 +1206,21 @@
       el.joinPlayerNameInput.value = cachedName;
     }
 
-    if (!el.joinGameCodeInput.value) {
+    if (urlCode) {
+      const resolvedUrlCode = resolveMatchingGameCode(urlCode);
+      el.joinGameCodeInput.value = resolvedUrlCode;
+      el.cachedCodeHint.textContent = 'Auto-filled from shared link';
+      cacheGameCode(resolvedUrlCode);
+    } else if (!el.joinGameCodeInput.value) {
       if (cachedCode) {
-        el.joinGameCodeInput.value = cachedCode;
+        el.joinGameCodeInput.value = resolveMatchingGameCode(cachedCode);
         el.cachedCodeHint.textContent = 'Default: your last game code';
       } else if (state.runningGames.length > 0) {
         el.joinGameCodeInput.value = state.runningGames[0].gameCode;
         el.cachedCodeHint.textContent = 'Latest active game';
       }
+    } else {
+      el.joinGameCodeInput.value = resolveMatchingGameCode(el.joinGameCodeInput.value);
     }
 
     if (cachedCode && !el.godLoginCodeInput.value) {
@@ -1172,9 +1240,23 @@
 
   function restoreSavedSession() {
     try {
+      const urlCode = getGameCodeFromUrl();
       const raw = localStorage.getItem(STORAGE_KEYS.ACTIVE_SESSION);
       if (!raw) return;
       const sess = JSON.parse(raw);
+
+      // If player opened a direct ?gamecode=... invite link for a specific game,
+      // only auto-restore if their saved session matches that game code!
+      if (urlCode) {
+        const normUrl = urlCode.replace(/[-_]+/g, '_');
+        const normSess = (sess.gameCode || '').trim().toLowerCase().replace(/[-_]+/g, '_');
+        if (normUrl !== normSess) {
+          switchView('join');
+          applyDefaultCachedGameCode();
+          return;
+        }
+      }
+
       if (sess.mode === 'player' && sess.gameCode && sess.playerName) {
         sendAction({
           action: 'JOIN_PLAYER',
@@ -1223,6 +1305,7 @@
           state.runningGames.map((g) => g.gameCode)
         );
       }
+      updateCreateInvitePreview();
       updateCreateTotalBadge();
     } else if (viewName === 'god-login') {
       el.mainNavTabs.classList.remove('hidden');
@@ -1492,7 +1575,12 @@
     }
   }
 
+  el.createGameCodeInput.addEventListener('input', () => {
+    updateCreateInvitePreview();
+  });
+
   el.createGameCodeInput.addEventListener('change', () => {
+    updateCreateInvitePreview();
     checkPreviousPlayersForCode(el.createGameCodeInput.value);
   });
 
@@ -1750,11 +1838,144 @@
     switchView('join');
   });
 
-  // ==================== GAME-GOD DASHBOARD ====================
-  function renderGodDashboard(g) {
-    const ip = (state.serverInfo?.ips && state.serverInfo.ips[0]) || window.location.hostname || 'localhost';
+  // ==================== GAME-GOD DASHBOARD & SHAREABLE URLS ====================
+  function getPrimaryBrowserUrl() {
+    const rawIps = state.serverInfo?.ips || [];
+    const nonLoopback = rawIps.filter((ip) => ip && ip !== '127.0.0.1' && ip !== 'localhost');
+    const host =
+      nonLoopback[0] ||
+      (window.location.hostname && window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost'
+        ? window.location.hostname
+        : '192.168.43.1');
     const port = state.serverInfo?.port || window.location.port || '8080';
-    el.godHotspotUrlDisplay.textContent = `http://${ip}:${port}`;
+    return `http://${host}:${port}`;
+  }
+
+  function buildGameInviteUrl(gameCode) {
+    const base = getPrimaryBrowserUrl();
+    const clean = (gameCode || '').trim().toLowerCase();
+    if (!clean) return base;
+    return `${base}/?gamecode=${encodeURIComponent(clean)}`;
+  }
+
+  function copyTextToClipboard(text, successMsg) {
+    if (window.AndroidBridge && typeof window.AndroidBridge.copyText === 'function') {
+      window.AndroidBridge.copyText(text);
+      showAlert(successMsg || `Copied: ${text}`, 'success');
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => showAlert(successMsg || `Copied: ${text}`, 'success'))
+        .catch(() => fallbackCopyText(text, successMsg));
+    } else {
+      fallbackCopyText(text, successMsg);
+    }
+  }
+
+  function fallbackCopyText(text, successMsg) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showAlert(successMsg || `Copied: ${text}`, 'success');
+    } catch {
+      showAlert(`Share this URL: ${text}`, 'info');
+    }
+  }
+
+  function shareGameInviteUrl(gameCode) {
+    const url = buildGameInviteUrl(gameCode);
+    const clean = (gameCode || '').trim().toLowerCase();
+    if (window.AndroidBridge && typeof window.AndroidBridge.shareUrl === 'function') {
+      window.AndroidBridge.shareUrl(url, clean);
+      return;
+    }
+    if (navigator.share) {
+      navigator
+        .share({
+          title: `Join Mafia Game (${clean})`,
+          text: `Join our Mafia game '${clean}'! Open this link in your browser:`,
+          url
+        })
+        .catch(() => {});
+      return;
+    }
+    copyTextToClipboard(url, `Copied invite link: ${url}`);
+  }
+
+  function updateCreateInvitePreview() {
+    if (!el.createInviteUrlDisplay) return;
+    const code = (el.createGameCodeInput?.value || '').trim().toLowerCase();
+    el.createInviteUrlDisplay.textContent = buildGameInviteUrl(code);
+  }
+
+  function updateBrowserUrlBanner() {
+    const url = getPrimaryBrowserUrl();
+    if (el.browserUrlText) {
+      el.browserUrlText.textContent = url;
+    }
+    if (el.godHotspotUrlDisplay) {
+      el.godHotspotUrlDisplay.textContent = url;
+    }
+    updateCreateInvitePreview();
+    if (state.currentGodGame && el.godJoinUrlDisplay) {
+      el.godJoinUrlDisplay.textContent = buildGameInviteUrl(state.currentGodGame.gameCode);
+    }
+  }
+
+  if (el.copyBrowserUrlBtn) {
+    el.copyBrowserUrlBtn.addEventListener('click', () => {
+      const url = getPrimaryBrowserUrl();
+      copyTextToClipboard(url, `Copied browser URL: ${url}`);
+    });
+  }
+
+  if (el.copyCreateInviteUrlBtn) {
+    el.copyCreateInviteUrlBtn.addEventListener('click', () => {
+      const url = buildGameInviteUrl(el.createGameCodeInput.value);
+      copyTextToClipboard(url, `Copied join URL: ${url}`);
+    });
+  }
+
+  if (el.shareCreateInviteUrlBtn) {
+    el.shareCreateInviteUrlBtn.addEventListener('click', () => {
+      shareGameInviteUrl(el.createGameCodeInput.value);
+    });
+  }
+
+  if (el.copyGodJoinUrlBtn) {
+    el.copyGodJoinUrlBtn.addEventListener('click', () => {
+      const code = state.currentGodGame?.gameCode || el.godBannerCode.textContent;
+      const url = buildGameInviteUrl(code);
+      copyTextToClipboard(url, `Copied join URL: ${url}`);
+    });
+  }
+
+  if (el.shareGodJoinUrlBtn) {
+    el.shareGodJoinUrlBtn.addEventListener('click', () => {
+      const code = state.currentGodGame?.gameCode || el.godBannerCode.textContent;
+      shareGameInviteUrl(code);
+    });
+  }
+
+  function renderGodDashboard(g) {
+    const url = getPrimaryBrowserUrl();
+    const joinUrl = buildGameInviteUrl(g.gameCode);
+    el.godHotspotUrlDisplay.textContent = url;
+    if (el.browserUrlText) {
+      el.browserUrlText.textContent = url;
+    }
+    if (el.godJoinUrlDisplay) {
+      el.godJoinUrlDisplay.textContent = joinUrl;
+    }
     el.godBannerCode.textContent = g.gameCode;
     el.godRoundBadge.textContent = `Round ${g.roundNumber || 1}`;
 
@@ -2090,6 +2311,7 @@
 
   // Initialize default generated code & connect
   el.createGameCodeInput.value = generateDockerName();
+  updateBrowserUrlBanner();
   applyDefaultCachedGameCode();
   connectWebSocket();
 })();

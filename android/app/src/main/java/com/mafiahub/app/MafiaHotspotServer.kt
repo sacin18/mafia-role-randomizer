@@ -86,26 +86,48 @@ class MafiaHotspotServer(
         }
 
         fun getHotspotIps(): List<String> {
-            val ips = mutableListOf<String>()
+            val priorityIps = mutableListOf<String>()
+            val fallbackIps = mutableListOf<String>()
             try {
                 val interfaces = Collections.list(NetworkInterface.getNetworkInterfaces())
                 for (ni in interfaces) {
                     if (!ni.isUp || ni.isLoopback) continue
+                    val ifName = ni.name.lowercase()
+                    // Skip cellular / mobile data / VPN tunnel interfaces so we only show Hotspot / Wi-Fi LAN IPs
+                    if (ifName.startsWith("rmnet") ||
+                        ifName.startsWith("ccmni") ||
+                        ifName.startsWith("pdp") ||
+                        ifName.startsWith("dummy") ||
+                        ifName.startsWith("tun") ||
+                        ifName.startsWith("ppp") ||
+                        ifName.startsWith("clat")
+                    ) {
+                        continue
+                    }
                     for (addr in Collections.list(ni.inetAddresses)) {
                         if (addr is Inet4Address && !addr.isLoopbackAddress) {
                             val ip = addr.hostAddress ?: continue
-                            // Prioritize Android hotspot subnet IPs (192.168.43.x, 192.168.49.x, etc.)
-                            if (ip.startsWith("192.168.43.") || ip.startsWith("192.168.49.") || ni.name.contains("ap") || ni.name.contains("wlan")) {
-                                ips.add(0, ip)
+                            if (ip.startsWith("192.168.43.") ||
+                                ip.startsWith("192.168.49.") ||
+                                ip.startsWith("192.168.137.") ||
+                                ifName.contains("ap") ||
+                                ifName.contains("wlan") ||
+                                ifName.contains("swlan") ||
+                                ifName.contains("tether") ||
+                                ifName.contains("rndis") ||
+                                ip.startsWith("192.168.")
+                            ) {
+                                priorityIps.add(ip)
                             } else {
-                                ips.add(ip)
+                                fallbackIps.add(ip)
                             }
                         }
                     }
                 }
             } catch (_: Exception) {
             }
-            return if (ips.isEmpty()) listOf("127.0.0.1") else ips.distinct()
+            val combined = (priorityIps + fallbackIps).distinct()
+            return if (combined.isEmpty()) listOf("192.168.43.1") else combined
         }
     }
 
@@ -197,6 +219,23 @@ class MafiaHotspotServer(
     private fun syncLobbyWakeState() {
         val anyLobby = games.values.any { it.optString("status", "LOBBY") == "LOBBY" }
         onLobbyWakeStateChanged(anyLobby)
+    }
+
+    fun getLatestActiveGameCode(): String? {
+        synchronized(stateLock) {
+            return games.values
+                .sortedByDescending { it.optLong("createdAt", 0L) }
+                .firstOrNull { it.optString("status", "LOBBY") != "ENDED" }
+                ?.optString("gameCode")
+                ?: games.keys.firstOrNull()
+        }
+    }
+
+    private fun resolveGameCode(raw: String): String {
+        val clean = raw.trim().lowercase()
+        if (games.containsKey(clean)) return clean
+        val norm = clean.replace(Regex("[-_]+"), "_")
+        return games.keys.firstOrNull { it.lowercase().replace(Regex("[-_]+"), "_") == norm } ?: clean
     }
 
     private fun handleConnection(socket: Socket) {
@@ -596,7 +635,7 @@ class MafiaHotspotServer(
                 }
 
                 "GOD_AUTH" -> {
-                    val code = msg.optString("gameCode", "").trim().lowercase()
+                    val code = resolveGameCode(msg.optString("gameCode", ""))
                     val passcode = msg.optString("passcode", "").trim()
                     val g = games[code]
                     if (g == null || g.optString("passcode") != passcode) {
@@ -612,7 +651,7 @@ class MafiaHotspotServer(
                 }
 
                 "JOIN_PLAYER" -> {
-                    val code = msg.optString("gameCode", "").trim().lowercase()
+                    val code = resolveGameCode(msg.optString("gameCode", ""))
                     val playerName = msg.optString("playerName", "").trim()
                     val token = msg.optString("playerToken", "").trim()
                     val g = games[code]
